@@ -1,0 +1,79 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+
+function Dashboard() {
+  const navigate = useNavigate();
+  const { token, logout } = useAuth();
+
+  const [message, setMessage] = useState("Verificando acceso...");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const verificarAcceso = async () => {
+      try {
+        const response = await fetch("/api/dashboard", {
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          throw new Error("Acceso no autorizado");
+        }
+
+        const data = await response.json();
+        setMessage(data.message);
+
+      } catch (err) {
+        if (err.name === "AbortError") return;
+
+        setError("Tu sesión no es válida o ha expirado");
+        logout();
+      }
+    };
+
+    verificarAcceso();
+
+    return () => controller.abort();
+  }, [token, logout]);
+
+  const cerrarSesion = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
+
+  if (error) {
+    return (
+      <div style={{ padding: "40px" }}>
+        <p>{error}</p>
+        <button onClick={() => navigate("/login", { replace: true })}>
+          Volver al Login
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "#0f172a",
+      color: "white",
+      padding: "40px"
+    }}>
+      <h1>Zero Trust Security</h1>
+      <h2>Dashboard protegido</h2>
+
+      <p>{message}</p>
+
+      <button onClick={cerrarSesion}>
+        Cerrar sesión
+      </button>
+    </div>
+  );
+}
+
+export default Dashboard;
